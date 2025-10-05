@@ -5,8 +5,10 @@ import { Input } from '@/components/ui/input.jsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
-import { Search, Download, TrendingUp, Users, DollarSign, Briefcase, ArrowUpRight, ArrowDownRight, Filter } from 'lucide-react'
-import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
+import { Progress } from '@/components/ui/progress.jsx'
+import { Search, Download, TrendingUp, Users, DollarSign, Briefcase, ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon, BarChart3, X, Calendar, Mail, Phone, Building2, Wallet, TrendingDown, Activity } from 'lucide-react'
+import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import './App.css'
 
 function App() {
@@ -26,7 +28,7 @@ function App() {
         
         // Parse data starting from row 4 (index 3) where actual data begins
         const headers = data[3]
-        const clientData = data.slice(4).filter(row => row[0]) // Filter out empty rows
+        const clientData = data.slice(4).filter(row => row[0] && typeof row[0] === 'string' && row[0].length > 0 && !row[0].includes('<')) // Filter out empty rows and instruction rows
         
         const parsedClients = clientData.map(row => ({
           name: row[0] || '',
@@ -84,13 +86,17 @@ function App() {
     const totalNetAddition = clients.reduce((sum, client) => sum + client.netAddition, 0)
     const totalCash = clients.reduce((sum, client) => sum + client.cashAllocation, 0)
     const avgAUM = clients.length > 0 ? totalAUM / clients.length : 0
+    const totalInvested = clients.reduce((sum, client) => sum + client.netInvestmentValue, 0)
+    const avgCashPercent = clients.length > 0 ? (totalCash / totalAUM) * 100 : 0
 
     return {
       totalClients: clients.length,
       totalAUM,
       totalNetAddition,
       totalCash,
-      avgAUM
+      avgAUM,
+      totalInvested,
+      avgCashPercent
     }
   }, [clients])
 
@@ -101,26 +107,104 @@ function App() {
       const type = client.accountType || 'Unknown'
       types[type] = (types[type] || 0) + 1
     })
-    return Object.entries(types).map(([name, value]) => ({ name, value }))
+    return Object.entries(types).map(([name, value]) => ({ name, value, aum: clients.filter(c => c.accountType === name).reduce((sum, c) => sum + c.aum, 0) }))
   }, [clients])
 
   const rmData = useMemo(() => {
     const rms = {}
     clients.forEach(client => {
       const rm = client.rm || 'Unassigned'
-      rms[rm] = (rms[rm] || 0) + client.aum
+      if (!rms[rm]) {
+        rms[rm] = { aum: 0, clients: 0, netAddition: 0 }
+      }
+      rms[rm].aum += client.aum
+      rms[rm].clients += 1
+      rms[rm].netAddition += client.netAddition
     })
-    return Object.entries(rms).map(([name, aum]) => ({ name, aum }))
+    return Object.entries(rms).map(([name, data]) => ({ name, ...data }))
   }, [clients])
 
   const topClients = useMemo(() => {
     return [...clients]
       .sort((a, b) => b.aum - a.aum)
       .slice(0, 10)
-      .map(client => ({ name: client.name, aum: client.aum }))
+      .map(client => ({ name: client.name, aum: client.aum, netAddition: client.netAddition }))
   }, [clients])
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D']
+  const familyData = useMemo(() => {
+    const families = {}
+    clients.forEach(client => {
+      if (client.family) {
+        if (!families[client.family]) {
+          families[client.family] = { aum: 0, clients: 0 }
+        }
+        families[client.family].aum += client.aum
+        families[client.family].clients += 1
+      }
+    })
+    return Object.entries(families).map(([name, data]) => ({ name, ...data }))
+  }, [clients])
+
+  const cashVsInvestedData = useMemo(() => {
+    return clients.map(client => ({
+      name: client.name,
+      cash: client.cashAllocation,
+      invested: client.netInvestmentValue,
+      cashPercent: client.cashPercent
+    })).slice(0, 10)
+  }, [clients])
+
+  // Client-specific calculations
+  const getClientInsights = (client) => {
+    if (!client) return null
+
+    const allClientsAvgAUM = stats.avgAUM
+    const aumPercentile = ((clients.filter(c => c.aum < client.aum).length / clients.length) * 100).toFixed(0)
+    const investmentRate = client.aum > 0 ? ((client.netInvestmentValue / client.aum) * 100).toFixed(2) : 0
+    const cashRate = client.aum > 0 ? ((client.cashAllocation / client.aum) * 100).toFixed(2) : 0
+    const returnOnInvestment = client.netInvestmentValue > 0 ? (((client.aum - client.netInvestmentValue) / client.netInvestmentValue) * 100).toFixed(2) : 0
+    
+    // Get family members if applicable
+    const familyMembers = client.family ? clients.filter(c => c.family === client.family && c.name !== client.name) : []
+    const familyTotalAUM = client.family ? clients.filter(c => c.family === client.family).reduce((sum, c) => sum + c.aum, 0) : client.aum
+    
+    // RM performance
+    const rmClients = clients.filter(c => c.rm === client.rm)
+    const rmTotalAUM = rmClients.reduce((sum, c) => sum + c.aum, 0)
+    const rmAvgAUM = rmTotalAUM / rmClients.length
+
+    return {
+      aumPercentile,
+      investmentRate,
+      cashRate,
+      returnOnInvestment,
+      comparisonToAvg: ((client.aum / allClientsAvgAUM) * 100).toFixed(0),
+      familyMembers,
+      familyTotalAUM,
+      rmClients: rmClients.length,
+      rmTotalAUM,
+      rmAvgAUM,
+      accountAge: client.activationDate ? calculateAccountAge(client.activationDate) : 'N/A'
+    }
+  }
+
+  const calculateAccountAge = (activationDate) => {
+    if (!activationDate) return 'N/A'
+    try {
+      const date = new Date(activationDate)
+      const now = new Date()
+      const years = now.getFullYear() - date.getFullYear()
+      const months = now.getMonth() - date.getMonth()
+      const totalMonths = years * 12 + months
+      
+      if (totalMonths < 12) return `${totalMonths} months`
+      return `${years} years ${months} months`
+    } catch {
+      return 'N/A'
+    }
+  }
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FF6B9D', '#C084FC']
 
   const formatCurrency = (value) => {
     if (value >= 10000000) {
@@ -138,6 +222,486 @@ function App() {
     XLSX.writeFile(wb, 'BWC_Client_Report.xlsx')
   }
 
+  const ClientDetailModal = ({ client, onClose }) => {
+    if (!client) return null
+    
+    const insights = getClientInsights(client)
+    
+    // Data for client-specific charts
+    const clientFinancialBreakdown = [
+      { name: 'AUM', value: client.aum, fill: '#0088FE' },
+      { name: 'Net Investment', value: client.netInvestmentValue, fill: '#00C49F' },
+      { name: 'Cash', value: client.cashAllocation, fill: '#FFBB28' },
+      { name: 'Net Addition', value: client.netAddition, fill: '#FF8042' }
+    ].filter(item => item.value > 0)
+
+    const clientPerformanceData = [
+      { metric: 'AUM Percentile', value: parseFloat(insights.aumPercentile), fullMark: 100 },
+      { metric: 'Investment Rate', value: parseFloat(insights.investmentRate), fullMark: 100 },
+      { metric: 'Cash Rate', value: parseFloat(insights.cashRate), fullMark: 100 },
+      { metric: 'ROI', value: Math.min(parseFloat(insights.returnOnInvestment), 100), fullMark: 100 }
+    ]
+
+    const comparisonData = [
+      { category: 'This Client', aum: client.aum },
+      { category: 'RM Average', aum: insights.rmAvgAUM },
+      { category: 'Overall Average', aum: stats.avgAUM }
+    ]
+
+    return (
+      <div 
+        className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 overflow-y-auto"
+        onClick={onClose}
+      >
+        <div 
+          className="max-w-6xl w-full bg-white dark:bg-slate-900 rounded-lg shadow-2xl my-8"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-lg">
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-3xl font-bold">{client.name}</h2>
+                <p className="text-blue-100 mt-1">{client.email}</p>
+                <div className="flex gap-2 mt-3">
+                  <Badge className="bg-white/20 text-white border-white/30">{client.accountType}</Badge>
+                  {client.sip && <Badge className="bg-green-500/20 text-white border-green-300/30">SIP Active</Badge>}
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20">
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="financial">Financial Details</TabsTrigger>
+                <TabsTrigger value="insights">Insights</TabsTrigger>
+                <TabsTrigger value="family">Family & RM</TabsTrigger>
+              </TabsList>
+
+              {/* Overview Tab */}
+              <TabsContent value="overview" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Total AUM</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{formatCurrency(client.aum)}</div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {insights.comparisonToAvg}% of average
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Net Addition</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className={`text-2xl font-bold ${client.netAddition >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(client.netAddition)}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                        {client.netAddition >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                        Inflows/Outflows
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Cash Allocation</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{formatCurrency(client.cashAllocation)}</div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {insights.cashRate}% of portfolio
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Contact Information */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Contact Information</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center gap-3">
+                        <Mail className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Email</p>
+                          <p className="text-sm text-muted-foreground">{client.email || 'N/A'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Phone className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Mobile</p>
+                          <p className="text-sm text-muted-foreground">{client.mobile || 'N/A'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Building2 className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Country</p>
+                          <p className="text-sm text-muted-foreground">{client.country || 'N/A'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Briefcase className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Occupation</p>
+                          <p className="text-sm text-muted-foreground">{client.occupation || 'N/A'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Calendar className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Activation Date</p>
+                          <p className="text-sm text-muted-foreground">{client.activationDate || 'N/A'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Activity className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Account Age</p>
+                          <p className="text-sm text-muted-foreground">{insights.accountAge}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Notes */}
+                {client.notes && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Notes</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm">{client.notes}</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* Financial Details Tab */}
+              <TabsContent value="financial" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Financial Breakdown</CardTitle>
+                      <CardDescription>Distribution of client's portfolio</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <PieChart>
+                          <Pie
+                            data={clientFinancialBreakdown}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {clientFinancialBreakdown.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => formatCurrency(value)} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Performance Metrics</CardTitle>
+                      <CardDescription>Client performance indicators</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <RadarChart data={clientPerformanceData}>
+                          <PolarGrid />
+                          <PolarAngleAxis dataKey="metric" />
+                          <PolarRadiusAxis angle={90} domain={[0, 100]} />
+                          <Radar name="Performance" dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                          <Tooltip />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Detailed Financial Metrics</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between mb-2">
+                          <span className="text-sm font-medium">Investment Rate</span>
+                          <span className="text-sm font-bold">{insights.investmentRate}%</span>
+                        </div>
+                        <Progress value={parseFloat(insights.investmentRate)} className="h-2" />
+                      </div>
+                      <div>
+                        <div className="flex justify-between mb-2">
+                          <span className="text-sm font-medium">Cash Allocation Rate</span>
+                          <span className="text-sm font-bold">{insights.cashRate}%</span>
+                        </div>
+                        <Progress value={parseFloat(insights.cashRate)} className="h-2" />
+                      </div>
+                      <div>
+                        <div className="flex justify-between mb-2">
+                          <span className="text-sm font-medium">Return on Investment</span>
+                          <span className={`text-sm font-bold ${parseFloat(insights.returnOnInvestment) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {insights.returnOnInvestment}%
+                          </span>
+                        </div>
+                        <Progress value={Math.min(Math.abs(parseFloat(insights.returnOnInvestment)), 100)} className="h-2" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Net Investment Value</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-xl font-bold">{formatCurrency(client.netInvestmentValue)}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Cash %</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-xl font-bold">{client.cashPercent.toFixed(2)}%</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Total Returns</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-xl font-bold">{formatCurrency(client.aum - client.netInvestmentValue)}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">AUM Rank</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-xl font-bold">Top {insights.aumPercentile}%</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              {/* Insights Tab */}
+              <TabsContent value="insights" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Comparative Analysis</CardTitle>
+                    <CardDescription>How this client compares to others</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={comparisonData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="category" />
+                        <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                        <Tooltip formatter={(value) => formatCurrency(value)} />
+                        <Bar dataKey="aum" fill="#8884d8" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Key Insights</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded">
+                          <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Portfolio Ranking</p>
+                          <p className="text-sm text-muted-foreground">
+                            This client is in the top {insights.aumPercentile}% of all clients by AUM
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="bg-green-100 dark:bg-green-900 p-2 rounded">
+                          <Wallet className="h-5 w-5 text-green-600 dark:text-green-300" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Investment Strategy</p>
+                          <p className="text-sm text-muted-foreground">
+                            {parseFloat(insights.cashRate) > 20 
+                              ? 'High cash allocation - conservative approach' 
+                              : 'Low cash allocation - aggressive investment strategy'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="bg-purple-100 dark:bg-purple-900 p-2 rounded">
+                          <Activity className="h-5 w-5 text-purple-600 dark:text-purple-300" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Performance</p>
+                          <p className="text-sm text-muted-foreground">
+                            {parseFloat(insights.returnOnInvestment) >= 0 
+                              ? `Positive ROI of ${insights.returnOnInvestment}%` 
+                              : `Negative ROI of ${insights.returnOnInvestment}%`}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Recommendations</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {parseFloat(insights.cashRate) > 30 && (
+                        <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">High Cash Holdings</p>
+                          <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                            Consider discussing investment opportunities to optimize returns
+                          </p>
+                        </div>
+                      )}
+                      {client.netAddition < 0 && (
+                        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+                          <p className="text-sm font-medium text-red-800 dark:text-red-200">Net Withdrawals</p>
+                          <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                            Client has made net withdrawals - follow up to understand needs
+                          </p>
+                        </div>
+                      )}
+                      {!client.sip && (
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+                          <p className="text-sm font-medium text-blue-800 dark:text-blue-200">SIP Opportunity</p>
+                          <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                            Client doesn't have an active SIP - consider proposing systematic investment
+                          </p>
+                        </div>
+                      )}
+                      {parseFloat(insights.returnOnInvestment) > 20 && (
+                        <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
+                          <p className="text-sm font-medium text-green-800 dark:text-green-200">Strong Performance</p>
+                          <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                            Excellent returns - good opportunity to discuss portfolio expansion
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              {/* Family & RM Tab */}
+              <TabsContent value="family" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Relationship Manager</CardTitle>
+                      <CardDescription>{client.rm || 'Unassigned'}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Clients Managed</p>
+                        <p className="text-2xl font-bold">{insights.rmClients}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total AUM Managed</p>
+                        <p className="text-2xl font-bold">{formatCurrency(insights.rmTotalAUM)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Average Client AUM</p>
+                        <p className="text-2xl font-bold">{formatCurrency(insights.rmAvgAUM)}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Family Group</CardTitle>
+                      <CardDescription>{client.family || 'No family group'}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {client.family ? (
+                        <>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Family Members</p>
+                            <p className="text-2xl font-bold">{insights.familyMembers.length + 1}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Total Family AUM</p>
+                            <p className="text-2xl font-bold">{formatCurrency(insights.familyTotalAUM)}</p>
+                          </div>
+                          {insights.familyMembers.length > 0 && (
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-2">Other Members</p>
+                              <div className="space-y-1">
+                                {insights.familyMembers.map((member, idx) => (
+                                  <div key={idx} className="flex justify-between text-sm">
+                                    <span>{member.name}</span>
+                                    <span className="font-medium">{formatCurrency(member.aum)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">This client is not part of a family group</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Footer */}
+          <div className="border-t p-4 flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>Close</Button>
+            <Button onClick={() => {
+              const ws = XLSX.utils.json_to_sheet([client])
+              const wb = XLSX.utils.book_new()
+              XLSX.utils.book_append_sheet(wb, ws, 'Client')
+              XLSX.writeFile(wb, `${client.name}_Report.xlsx`)
+            }}>
+              <Download className="h-4 w-4 mr-2" />
+              Export Client Data
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       {/* Header */}
@@ -145,8 +709,8 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">BWC Client Dashboard</h1>
-              <p className="text-slate-600 dark:text-slate-400 mt-1">Comprehensive client portfolio management</p>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">PMS Client Dashboard</h1>
+              <p className="text-slate-600 dark:text-slate-400 mt-1">Comprehensive portfolio management & insights</p>
             </div>
             <Button onClick={downloadReport} className="gap-2">
               <Download className="h-4 w-4" />
@@ -251,6 +815,45 @@ function App() {
                   <Tooltip formatter={(value) => formatCurrency(value)} />
                   <Bar dataKey="aum" fill="#8884d8" />
                 </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow duration-300">
+            <CardHeader>
+              <CardTitle>Family Group Analysis</CardTitle>
+              <CardDescription>AUM by family groups</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={familyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                  <Tooltip formatter={(value) => formatCurrency(value)} />
+                  <Bar dataKey="aum" fill="#00C49F" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow duration-300">
+            <CardHeader>
+              <CardTitle>RM Performance</CardTitle>
+              <CardDescription>Clients and net additions by RM</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <ComposedChart data={rmData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis yAxisId="left" tickFormatter={(value) => formatCurrency(value)} />
+                  <YAxis yAxisId="right" orientation="right" />
+                  <Tooltip />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="netAddition" fill="#8884d8" name="Net Addition" />
+                  <Line yAxisId="right" type="monotone" dataKey="clients" stroke="#ff7300" name="Clients" />
+                </ComposedChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
@@ -372,7 +975,7 @@ function App() {
                             setSelectedClient(client)
                           }}
                         >
-                          View
+                          View Details
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -382,104 +985,18 @@ function App() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Client Detail Modal */}
-        {selectedClient && (
-          <div 
-            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
-            onClick={() => setSelectedClient(null)}
-          >
-            <Card 
-              className="max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <CardHeader>
-                <CardTitle className="text-2xl">{selectedClient.name}</CardTitle>
-                <CardDescription>{selectedClient.email}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Account Type</p>
-                    <Badge className="mt-1">{selectedClient.accountType}</Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Activation Date</p>
-                    <p className="mt-1">{selectedClient.activationDate}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Mobile</p>
-                    <p className="mt-1">{selectedClient.mobile || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Country</p>
-                    <p className="mt-1">{selectedClient.country || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Occupation</p>
-                    <p className="mt-1">{selectedClient.occupation || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Relationship Manager</p>
-                    <p className="mt-1">{selectedClient.rm}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Family</p>
-                    <p className="mt-1">{selectedClient.family || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">SIP</p>
-                    <p className="mt-1">{selectedClient.sip || 'N/A'}</p>
-                  </div>
-                </div>
-                
-                <div className="border-t pt-4">
-                  <h3 className="font-semibold mb-3">Financial Details</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">AUM</p>
-                      <p className="text-xl font-bold mt-1">{formatCurrency(selectedClient.aum)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Net Addition/Withdrawal</p>
-                      <p className={`text-xl font-bold mt-1 ${selectedClient.netAddition >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(selectedClient.netAddition)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Cash Allocation</p>
-                      <p className="text-xl font-bold mt-1">{formatCurrency(selectedClient.cashAllocation)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Cash %</p>
-                      <p className="text-xl font-bold mt-1">{selectedClient.cashPercent.toFixed(2)}%</p>
-                    </div>
-                  </div>
-                </div>
-
-                {selectedClient.notes && (
-                  <div className="border-t pt-4">
-                    <h3 className="font-semibold mb-2">Notes</h3>
-                    <p className="text-sm text-muted-foreground">{selectedClient.notes}</p>
-                  </div>
-                )}
-
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button variant="outline" onClick={() => setSelectedClient(null)}>
-                    Close
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
       </main>
+
+      {/* Client Detail Modal */}
+      {selectedClient && (
+        <ClientDetailModal client={selectedClient} onClose={() => setSelectedClient(null)} />
+      )}
 
       {/* Footer */}
       <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <p className="text-center text-sm text-muted-foreground">
-            © 2024 BWC Client Dashboard. All rights reserved.
+            © 2024 PMS Client Dashboard. All rights reserved.
           </p>
         </div>
       </footer>
