@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMS Dashboard - Project Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PMS Dashboard</h1>
+            <p class="subtitle">Project Management System</p>
+        </header>
+
+        <div class="dashboard">
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalProjects">0</div>
+                    <div class="stat-label">Total Projects</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="activeProjects">0</div>
+                    <div class="stat-label">Active Projects</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="completedProjects">0</div>
+                    <div class="stat-label">Completed Projects</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalTasks">0</div>
+                    <div class="stat-label">Total Tasks</div>
+                </div>
+            </div>
+
+            <div class="main-content">
+                <section class="projects-section">
+                    <div class="section-header">
+                        <h2>Projects</h2>
+                        <button class="btn-primary" onclick="showAddProjectModal()">+ Add Project</button>
+                    </div>
+                    <div class="projects-list" id="projectsList">
+                        <!-- Projects will be dynamically added here -->
+                    </div>
+                </section>
+
+                <section class="tasks-section">
+                    <div class="section-header">
+                        <h2>Tasks</h2>
+                        <button class="btn-primary" onclick="showAddTaskModal()">+ Add Task</button>
+                    </div>
+                    <div class="tasks-list" id="tasksList">
+                        <!-- Tasks will be dynamically added here -->
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Project Modal -->
+    <div id="projectModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeProjectModal()">&times;</span>
+            <h2>Add New Project</h2>
+            <form id="projectForm">
+                <div class="form-group">
+                    <label for="projectName">Project Name:</label>
+                    <input type="text" id="projectName" required>
+                </div>
+                <div class="form-group">
+                    <label for="projectDescription">Description:</label>
+                    <textarea id="projectDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="projectStatus">Status:</label>
+                    <select id="projectStatus">
+                        <option value="active">Active</option>
+                        <option value="completed">Completed</option>
+                        <option value="on-hold">On Hold</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary">Add Project</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeTaskModal()">&times;</span>
+            <h2>Add New Task</h2>
+            <form id="taskForm">
+                <div class="form-group">
+                    <label for="taskName">Task Name:</label>
+                    <input type="text" id="taskName" required>
+                </div>
+                <div class="form-group">
+                    <label for="taskProject">Project:</label>
+                    <select id="taskProject" required>
+                        <option value="">Select a project</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskPriority">Priority:</label>
+                    <select id="taskPriority">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskStatus">Status:</label>
+                    <select id="taskStatus">
+                        <option value="todo">To Do</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="done">Done</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary">Add Task</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
