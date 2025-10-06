@@ -1,4 +1,4 @@
-import AppComponent from "./pages/appComponent"
+import NewAppComponent from "./pages/NewAppComponent"
 import './App.css'
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import Auth from "./pages/Auth";
@@ -21,7 +21,7 @@ const AppRouter = () => {
           element={user ? <Navigate to="/dashboard" replace /> : <Auth />} 
         />
         <Route path='/' element={<Auth />} />
-        <Route path='/dashboard' element={<ProtectedRoute><AppComponent/></ProtectedRoute>} />
+        <Route path='/dashboard' element={<ProtectedRoute><NewAppComponent/></ProtectedRoute>} />
       </Routes> 
     </BrowserRouter>
   )

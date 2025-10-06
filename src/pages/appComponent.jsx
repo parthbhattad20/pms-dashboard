@@ -7,14 +7,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
 import { Progress } from '@/components/ui/progress.jsx'
-import { Search, Download, TrendingUp, Users, DollarSign, Briefcase, ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon, BarChart3, X, Calendar, Mail, Phone, Building2, Wallet, TrendingDown, Activity } from 'lucide-react'
+import { Search, Download, TrendingUp, Users, DollarSign, Briefcase, ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon, BarChart3, X, Calendar, Mail, Phone, Building2, Wallet, TrendingDown, Activity, LogOut, Crown } from 'lucide-react'
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { useAuth } from '../Context/AuthContext.jsx'
+
+// Import the new components
+import DashboardLayout from '../components/DashboardLayout.jsx'
+import OverviewTab from '../components/tabs/OverviewTab.jsx'
+import ClientsTab from '../components/tabs/ClientsTab.jsx'
+import AnalyticsTab from '../components/tabs/AnalyticsTab.jsx'
+import PerformanceTab from '../components/tabs/PerformanceTab.jsx'
+import SettingsTab from '../components/tabs/SettingsTab.jsx'
 function AppComponent() {
     
   const [clients, setClients] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedClient, setSelectedClient] = useState(null)
   const [filterType, setFilterType] = useState('all')
+  const [activeTab, setActiveTab] = useState('overview') // New state for sidebar navigation
+  const { user, logout } = useAuth()
 
   useEffect(() => {
     // Load Excel data
@@ -708,13 +719,35 @@ function AppComponent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">PMS Client Dashboard</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">PMS Client Dashboard</h1>
+                <Badge variant={premiumTier === 'enterprise' ? 'default' : premiumTier === 'premium' ? 'secondary' : 'outline'} className="gap-1">
+                  <Crown className="h-3 w-3" />
+                  {premiumTier.charAt(0).toUpperCase() + premiumTier.slice(1)}
+                </Badge>
+              </div>
               <p className="text-slate-600 dark:text-slate-400 mt-1">Comprehensive portfolio management & insights</p>
+              {user && <p className="text-sm text-slate-500 dark:text-slate-400">Welcome, {user.name}</p>}
             </div>
-            <Button onClick={downloadReport} className="gap-2">
-              <Download className="h-4 w-4" />
-              Download Report
-            </Button>
+            <div className="flex items-center gap-3">
+              <select 
+                value={premiumTier} 
+                onChange={(e) => setPremiumTier(e.target.value)}
+                className="px-3 py-2 border border-slate-300 rounded-md text-sm bg-white dark:bg-slate-700 dark:border-slate-600"
+              >
+                <option value="basic">Basic Dashboard</option>
+                <option value="premium">Premium Dashboard</option>
+                <option value="enterprise">Enterprise Dashboard</option>
+              </select>
+              <Button onClick={downloadReport} variant="outline" className="gap-2">
+                <Download className="h-4 w-4" />
+                Download Report
+              </Button>
+              <Button onClick={logout} variant="ghost" className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50">
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -818,23 +851,26 @@ function AppComponent() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow duration-300">
-            <CardHeader>
-              <CardTitle>Family Group Analysis</CardTitle>
-              <CardDescription>AUM by family groups</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={familyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                  <Tooltip formatter={(value) => formatCurrency(value)} />
-                  <Bar dataKey="aum" fill="#00C49F" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          {/* Premium Feature: Family Group Analysis */}
+          {premiumFeatures.showFamilyAnalysis && (
+            <Card className="hover:shadow-lg transition-shadow duration-300">
+              <CardHeader>
+                <CardTitle>Family Group Analysis</CardTitle>
+                <CardDescription>AUM by family groups (Premium Feature)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={familyData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                    <Tooltip formatter={(value) => formatCurrency(value)} />
+                    <Bar dataKey="aum" fill="#00C49F" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="hover:shadow-lg transition-shadow duration-300">
             <CardHeader>
@@ -875,6 +911,60 @@ function AppComponent() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+
+        {/* Enterprise Feature: Advanced Analytics */}
+        {premiumFeatures.showEnterpriseAnalytics && (
+          <div className="mb-8">
+            <Card className="hover:shadow-lg transition-shadow duration-300 border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Crown className="h-5 w-5 text-yellow-600" />
+                  Enterprise Analytics Dashboard
+                </CardTitle>
+                <CardDescription>Advanced insights and predictive analytics (Enterprise Only)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-white rounded-lg border">
+                    <h4 className="font-semibold text-sm text-slate-700">Risk Analysis</h4>
+                    <p className="text-2xl font-bold text-green-600">{((Math.random() * 15) + 85).toFixed(1)}%</p>
+                    <p className="text-xs text-slate-500">Portfolio Health Score</p>
+                  </div>
+                  <div className="p-4 bg-white rounded-lg border">
+                    <h4 className="font-semibold text-sm text-slate-700">Predicted Growth</h4>
+                    <p className="text-2xl font-bold text-blue-600">+{((Math.random() * 8) + 7).toFixed(1)}%</p>
+                    <p className="text-xs text-slate-500">Next 12 months</p>
+                  </div>
+                  <div className="p-4 bg-white rounded-lg border">
+                    <h4 className="font-semibold text-sm text-slate-700">Optimization Score</h4>
+                    <p className="text-2xl font-bold text-purple-600">{((Math.random() * 20) + 75).toFixed(0)}%</p>
+                    <p className="text-xs text-slate-500">Asset allocation efficiency</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Premium Upgrade Prompt for Basic Users */}
+        {premiumTier === 'basic' && (
+          <Card className="mb-6 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-blue-900">Unlock Premium Features</h3>
+                  <p className="text-blue-700 text-sm">Get access to advanced analytics, family grouping, and more insights</p>
+                </div>
+                <Button 
+                  onClick={() => setPremiumTier('premium')} 
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Upgrade to Premium
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Search and Filter Section */}
         <Card className="mb-8">
@@ -923,7 +1013,17 @@ function AppComponent() {
         {/* Client Table */}
         <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardHeader>
-            <CardTitle>Client Portfolio</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              <span>Client Portfolio</span>
+              <span className="text-sm font-normal text-muted-foreground">
+                Showing {filteredClients.length} of {clients.length} clients
+                {premiumFeatures.maxClients !== Infinity && (
+                  <span className="ml-2 text-xs bg-slate-100 px-2 py-1 rounded">
+                    {premiumTier} limit: {premiumFeatures.maxClients}
+                  </span>
+                )}
+              </span>
+            </CardTitle>
             <CardDescription>Complete list of all clients and their details</CardDescription>
           </CardHeader>
           <CardContent>
@@ -935,10 +1035,10 @@ function AppComponent() {
                     <TableHead>Email</TableHead>
                     <TableHead>Account Type</TableHead>
                     <TableHead className="text-right">AUM</TableHead>
-                    <TableHead className="text-right">Net Addition</TableHead>
+                    {premiumFeatures.showNetAddition && <TableHead className="text-right">Net Addition</TableHead>}
                     <TableHead>RM</TableHead>
-                    <TableHead>Family</TableHead>
-                    <TableHead>Notes</TableHead>
+                    {premiumFeatures.showFamilyColumn && <TableHead>Family</TableHead>}
+                    {premiumFeatures.showNotes && <TableHead>Notes</TableHead>}
                     <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -950,21 +1050,23 @@ function AppComponent() {
                       onClick={() => setSelectedClient(client)}
                     >
                       <TableCell className="font-medium">{client.name}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{client.email}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{client.email?.trim()}</TableCell>
                       <TableCell>
                         <Badge variant={client.accountType === 'NRI' ? 'default' : 'secondary'}>
                           {client.accountType}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-semibold">{formatCurrency(client.aum)}</TableCell>
-                      <TableCell className="text-right">
-                        <span className={client.netAddition >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          {formatCurrency(client.netAddition)}
-                        </span>
-                      </TableCell>
+                      {premiumFeatures.showNetAddition && (
+                        <TableCell className="text-right">
+                          <span className={client.netAddition >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            {formatCurrency(client.netAddition)}
+                          </span>
+                        </TableCell>
+                      )}
                       <TableCell>{client.rm}</TableCell>
-                      <TableCell>{client.family}</TableCell>
-                      <TableCell className="max-w-xs truncate text-sm text-muted-foreground">{client.notes}</TableCell>
+                      {premiumFeatures.showFamilyColumn && <TableCell>{client.family}</TableCell>}
+                      {premiumFeatures.showNotes && <TableCell className="max-w-xs truncate text-sm text-muted-foreground">{client.notes}</TableCell>}
                       <TableCell>
                         <Button 
                           variant="ghost" 
