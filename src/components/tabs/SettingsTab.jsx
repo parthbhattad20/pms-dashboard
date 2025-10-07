@@ -2,9 +2,37 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge.jsx'
 import { Button } from '@/components/ui/button.jsx'
 import { Switch } from '@/components/ui/switch.jsx'
-import { Settings as SettingsIcon, Bell, Shield, Database, Palette, Globe } from 'lucide-react'
+import { Settings as SettingsIcon, Bell, Shield, Database, Palette, Globe, FileText, TestTube } from 'lucide-react'
+import { testBasicPDF, testClientReportWithoutCharts } from '../../services/testPDFService.js'
 
 const SettingsTab = () => {
+  const handleTestBasicPDF = async () => {
+    try {
+      const result = await testBasicPDF()
+      if (result) {
+        alert('Basic PDF test completed successfully! Check your downloads.')
+      } else {
+        alert('Basic PDF test failed. Check console for details.')
+      }
+    } catch (error) {
+      console.error('PDF test error:', error)
+      alert('PDF test encountered an error. Check console for details.')
+    }
+  }
+
+  const handleTestClientReport = async () => {
+    try {
+      const result = await testClientReportWithoutCharts()
+      if (result) {
+        alert('Client report test completed successfully! Check your downloads.')
+      } else {
+        alert('Client report test failed. Check console for details.')
+      }
+    } catch (error) {
+      console.error('Client report test error:', error)
+      alert('Client report test encountered an error. Check console for details.')
+    }
+  }
   const settings = [
     {
       category: "Dashboard Preferences",
@@ -77,6 +105,44 @@ const SettingsTab = () => {
           </CardContent>
         </Card>
       ))}
+
+      {/* PDF Testing & Diagnostics */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TestTube className="h-5 w-5" />
+            PDF Report Testing
+          </CardTitle>
+          <CardDescription>
+            Test PDF generation functionality to diagnose issues
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Button 
+              onClick={handleTestBasicPDF}
+              variant="outline" 
+              className="w-full justify-start"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Test Basic PDF Generation
+            </Button>
+            <Button 
+              onClick={handleTestClientReport}
+              variant="outline" 
+              className="w-full justify-start"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Test Client Report (No Charts)
+            </Button>
+            <div className="text-xs text-gray-500 mt-2">
+              <p>• Basic PDF Test: Tests core PDF functionality and table generation</p>
+              <p>• Client Report Test: Tests comprehensive client reporting without charts</p>
+              <p>• Check your Downloads folder for generated test PDFs</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Account Management */}
       <Card>

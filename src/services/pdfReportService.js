@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 import html2canvas from 'html2canvas'
 
 class PDFReportService {
@@ -177,6 +177,12 @@ class PDFReportService {
       const chartElement = document.getElementById(chartElementId)
       if (!chartElement) {
         console.warn(`Chart element with ID ${chartElementId} not found`)
+        // Add a placeholder text instead of failing
+        if (title) {
+          this.addSubtitle(title)
+          this.addText(`Chart: ${title} (Chart not available for PDF)`, 10, 'italic')
+          this.addSpacer(10)
+        }
         return
       }
 
@@ -187,6 +193,9 @@ class PDFReportService {
         this.addSpacer(5)
       }
 
+      // Wait a bit to ensure chart is fully rendered
+      await new Promise(resolve => setTimeout(resolve, 500))
+
       const canvas = await html2canvas(chartElement, {
         backgroundColor: '#ffffff',
         scale: 2,
@@ -194,7 +203,15 @@ class PDFReportService {
         useCORS: true,
         allowTaint: true,
         removeContainer: true,
-        imageTimeout: 15000
+        imageTimeout: 15000,
+        onclone: (clonedDoc) => {
+          // Ensure the cloned chart is visible
+          const clonedChart = clonedDoc.getElementById(chartElementId)
+          if (clonedChart) {
+            clonedChart.style.display = 'block'
+            clonedChart.style.visibility = 'visible'
+          }
+        }
       })
 
       const imgData = canvas.toDataURL('image/png', 1.0)
@@ -212,7 +229,11 @@ class PDFReportService {
       this.currentY += imgHeight + 10
     } catch (error) {
       console.error('Error adding chart to PDF:', error)
-      this.addText(`Chart: ${title} (Error loading chart)`, 10, 'italic')
+      if (title) {
+        this.addSubtitle(title)
+        this.addText(`Chart: ${title} (Error loading chart: ${error.message})`, 10, 'italic')
+        this.addSpacer(10)
+      }
     }
   }
 
@@ -255,7 +276,7 @@ class PDFReportService {
       }
     }
 
-    this.doc.autoTable({...defaultOptions, ...options})
+    autoTable(this.doc, {...defaultOptions, ...options})
     this.currentY = this.doc.lastAutoTable.finalY + 10
   }
 

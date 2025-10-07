@@ -16,10 +16,25 @@ const AnalyticsTab = ({
 
   const handleDownloadAnalyticsReport = async () => {
     try {
-      const doc = await pdfReportService.generateAnalyticsReport(familyData, rmData, topClients, cashVsInvestedData, {})
-      pdfReportService.save('Analytics_Report.pdf')
+      // Ensure all charts are rendered before PDF generation
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      const doc = await pdfReportService.generateAnalyticsReport(
+        familyData || [], 
+        rmData || [], 
+        topClients || [], 
+        cashVsInvestedData || [], 
+        {
+          totalClients: topClients?.length || 0,
+          totalAUM: topClients?.reduce((sum, client) => sum + (client.aum || 0), 0) || 0,
+          totalNetAddition: topClients?.reduce((sum, client) => sum + (client.netAddition || 0), 0) || 0,
+          avgCashPercent: topClients?.reduce((sum, client) => sum + (client.cashPercent || 0), 0) / (topClients?.length || 1) || 0
+        }
+      )
+      pdfReportService.save('Comprehensive_Analytics_Report.pdf')
     } catch (error) {
       console.error('Error generating analytics report:', error)
+      alert('Error generating analytics report. Please check the console for details.')
     }
   }
 
@@ -49,7 +64,7 @@ const AnalyticsTab = ({
           </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={familyData} id="family-analysis-chart">
+                <BarChart data={familyData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis tickFormatter={(value) => formatCurrency(value)} />
@@ -58,6 +73,18 @@ const AnalyticsTab = ({
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
+            {/* Hidden chart for PDF generation */}
+            <div id="family-analysis-chart" style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '800px', height: '400px' }}>
+              <ResponsiveContainer width={800} height={400}>
+                <BarChart data={familyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                  <Tooltip formatter={(value) => formatCurrency(value)} />
+                  <Bar dataKey="aum" fill="#00C49F" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </Card>
 
           <Card className="hover:shadow-lg transition-shadow duration-300">
@@ -67,7 +94,7 @@ const AnalyticsTab = ({
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <ComposedChart data={rmData} id="rm-performance-detailed-chart">
+                <ComposedChart data={rmData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis yAxisId="left" tickFormatter={(value) => formatCurrency(value)} />
@@ -79,6 +106,21 @@ const AnalyticsTab = ({
                 </ComposedChart>
               </ResponsiveContainer>
             </CardContent>
+            {/* Hidden chart for PDF generation */}
+            <div id="rm-performance-detailed-chart" style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '800px', height: '400px' }}>
+              <ResponsiveContainer width={800} height={400}>
+                <ComposedChart data={rmData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis yAxisId="left" tickFormatter={(value) => formatCurrency(value)} />
+                  <YAxis yAxisId="right" orientation="right" />
+                  <Tooltip />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="netAddition" fill="#8884d8" name="Net Addition" />
+                  <Line yAxisId="right" type="monotone" dataKey="clients" stroke="#ff7300" name="Client Count" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
           </Card>
         </div>
 
@@ -90,7 +132,7 @@ const AnalyticsTab = ({
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={topClients} layout="vertical" id="top-clients-chart">
+            <BarChart data={topClients} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" tickFormatter={(value) => formatCurrency(value)} />
               <YAxis dataKey="name" type="category" width={150} />
@@ -99,6 +141,18 @@ const AnalyticsTab = ({
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
+        {/* Hidden chart for PDF generation */}
+        <div id="top-clients-chart" style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '800px', height: '500px' }}>
+          <ResponsiveContainer width={800} height={500}>
+            <BarChart data={topClients} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" tickFormatter={(value) => formatCurrency(value)} />
+              <YAxis dataKey="name" type="category" width={200} />
+              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Bar dataKey="aum" fill="#00C49F" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </Card>
 
       {/* Cash vs Investment Analysis */}
@@ -109,7 +163,7 @@ const AnalyticsTab = ({
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={cashVsInvestedData} id="cash-vs-invested-chart">
+            <ComposedChart data={cashVsInvestedData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis yAxisId="left" tickFormatter={(value) => formatCurrency(value)} />
@@ -122,6 +176,22 @@ const AnalyticsTab = ({
             </ComposedChart>
           </ResponsiveContainer>
         </CardContent>
+        {/* Hidden chart for PDF generation */}
+        <div id="cash-vs-invested-chart" style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '800px', height: '400px' }}>
+          <ResponsiveContainer width={800} height={400}>
+            <ComposedChart data={cashVsInvestedData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis yAxisId="left" tickFormatter={(value) => formatCurrency(value)} />
+              <YAxis yAxisId="right" orientation="right" />
+              <Tooltip />
+              <Legend />
+              <Bar yAxisId="left" dataKey="cash" stackId="stack" fill="#ffc658" name="Cash" />
+              <Bar yAxisId="left" dataKey="invested" stackId="stack" fill="#8884d8" name="Invested" />
+              <Line yAxisId="right" type="monotone" dataKey="cashPercent" stroke="#ff7300" name="Cash %" />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
       </Card>
 
       {/* Performance Metrics Grid */}

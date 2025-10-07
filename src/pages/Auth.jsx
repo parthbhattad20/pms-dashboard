@@ -1,6 +1,4 @@
 import Login from "./components/Login";
-import Register from "./components/Register";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Card,
   CardContent,
@@ -11,43 +9,36 @@ import {
 
 function Auth() {
   return (
-    <div className='flex h-screen'>
-      <div className='w-1/2'>
-        <img className='object-cover w-full h-full' src="https://images.unsplash.com/photo-1616133321649-d29ebc595799?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="placeholder 3d render image" />
+    <div 
+      className='h-screen w-full'
+      style={{
+        backgroundColor: '#253a5e'
+      }}
+    >
+      {/* Navbar with logo */}
+      <div className='w-full p-6'>
+        <img 
+          className='h-12 w-auto object-contain' 
+          src="https://images.squarespace-cdn.com/content/v1/66ab323e41a92509a1599122/3fcf8d88-5733-407f-a93b-0d3d3932b096/Bellwether+Logo+SVG+1.png?format=1500w" 
+          alt="Bellwether Logo" 
+        />
       </div>
-      <div className='w-1/2 grid place-content-center'>
-        <Tabs defaultValue="signup" className="w-[400px]">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger className='font-messina-mono font-bold uppercase' value="signup">Sign Up</TabsTrigger>
-            <TabsTrigger className='font-messina-mono font-bold uppercase' value="login">Login</TabsTrigger>
-          </TabsList>
-          <TabsContent value="signup">
-            <Card>
-              <CardHeader>
-                <CardTitle className='font-messina-mono uppercase font-bold text-2xl'>Sign Up</CardTitle>
-                <CardDescription>
-                  Create your Aura account to get started.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Register/>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="login">
-            <Card>
-              <CardHeader>
-                <CardTitle className='font-messina-mono uppercase font-bold text-2xl'>Login</CardTitle>
-                <CardDescription>
-                  Head toward your dashboard by entering your login credentials
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Login/>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+      
+      {/* Login form centered */}
+      <div className='flex justify-center items-center h-[calc(100vh-120px)]'>
+        <div className="w-[400px]">
+          <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+            <CardHeader>  
+              <CardTitle className='font-messina-mono uppercase font-bold text-2xl text-center'>Login</CardTitle>
+              <CardDescription className='text-center'>
+                Head toward your dashboard by entering your login credentials
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Login/>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )

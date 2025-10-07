@@ -38,6 +38,13 @@ import {
 
 const DashboardLayout = ({ children, activeTab, onTabChange }) => {
   const { user, logout } = useAuth()
+  console.log(user)
+
+
+  const handleLogout = ()=>{
+    logout();
+    console.log("logged out succeessfully")
+  }
 
   const navigationItems = [
     { 
@@ -196,7 +203,7 @@ const DashboardLayout = ({ children, activeTab, onTabChange }) => {
 
               {/* Logout Button */}
               <Button 
-                onClick={logout} 
+                onClick={handleLogout} 
                 variant="ghost" 
                 className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
               >

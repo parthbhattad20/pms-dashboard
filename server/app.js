@@ -7,6 +7,7 @@ import appRouter from './routes/index.js'
 
 const app = express ()
 app.use (express.json ())
+app.use(cookieParser('secret'))
 app.use (cookieParser ())
 const corsOptions = {
     origin: 'http://localhost:5173', // Replace with your client URL

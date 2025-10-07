@@ -11,11 +11,32 @@ const OverviewTab = ({ stats, accountTypeData, rmData, formatCurrency }) => {
 
   const handleDownloadOverviewReport = async () => {
     try {
-      const chartData = { accountTypeData, rmData }
-      const doc = await pdfReportService.generateAnalyticsReport([], rmData, [], [], stats)
-      pdfReportService.save('Overview_Report.pdf')
+      // Prepare comprehensive chart data for PDF
+      const chartData = { 
+        accountTypeData: accountTypeData || [], 
+        rmData: rmData || [],
+        totalClients: stats.totalClients,
+        totalAUM: stats.totalAUM,
+        totalNetAddition: stats.totalNetAddition,
+        avgCashPercent: stats.avgCashPercent
+      }
+      
+      // Generate a comprehensive portfolio report with all client data
+      const doc = await pdfReportService.generatePortfolioReport(
+        [], // clients data - will need to be passed from parent
+        {
+          totalClients: stats.totalClients,
+          totalAUM: stats.totalAUM,
+          totalNetAddition: stats.totalNetAddition,
+          totalCash: stats.totalCash,
+          avgCashPercent: stats.avgCashPercent
+        },
+        chartData
+      )
+      pdfReportService.save('Portfolio_Overview_Report.pdf')
     } catch (error) {
       console.error('Error generating overview report:', error)
+      alert('Error generating report. Please check the console for details.')
     }
   }
 
@@ -123,6 +144,28 @@ const OverviewTab = ({ stats, accountTypeData, rmData, formatCurrency }) => {
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
+          {/* Hidden chart for PDF generation */}
+          <div id="account-type-chart" style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '800px', height: '400px' }}>
+            <ResponsiveContainer width={800} height={400}>
+              <PieChart>
+                <Pie
+                  data={accountTypeData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={120}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {accountTypeData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </Card>
 
         <Card className="hover:shadow-lg transition-shadow duration-300">
@@ -141,6 +184,18 @@ const OverviewTab = ({ stats, accountTypeData, rmData, formatCurrency }) => {
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
+          {/* Hidden chart for PDF generation */}
+          <div id="rm-performance-chart" style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '800px', height: '400px' }}>
+            <ResponsiveContainer width={800} height={400}>
+              <BarChart data={rmData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Bar dataKey="aum" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </Card>
       </div>
     </div>

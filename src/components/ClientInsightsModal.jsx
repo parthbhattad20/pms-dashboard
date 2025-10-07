@@ -114,10 +114,32 @@ const ClientInsightsModal = ({ client, onClose, formatCurrency, calculateAccount
 
   const handleDownloadReport = async () => {
     try {
-      const doc = await pdfReportService.generateClientReport(client, insights)
-      pdfReportService.save(`${client.name.replace(/\s+/g, '_')}_Report.pdf`)
+      // Ensure charts are rendered before PDF generation
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Enhanced insights with comprehensive data
+      const enhancedInsights = {
+        ...insights,
+        accountAge: accountAge,
+        portfolioData: portfolioData,
+        riskMetrics: riskMetrics,
+        totalPortfolioValue: (client.aum || 0),
+        investmentRatio: ((client.netInvestmentValue || 0) / (client.aum || 1)) * 100,
+        cashRatio: (client.cashPercent || 0),
+        recommendations: insights.recommendations || [
+          'Review portfolio allocation based on risk tolerance',
+          'Consider systematic investment plans for cash deployment',
+          'Schedule quarterly portfolio review meeting',
+          'Evaluate tax-efficient investment strategies',
+          'Monitor market conditions for rebalancing opportunities'
+        ]
+      }
+      
+      const doc = await pdfReportService.generateClientReport(client, enhancedInsights, notes)
+      pdfReportService.save(`${client.name.replace(/\s+/g, '_')}_Detailed_Report.pdf`)
     } catch (error) {
       console.error('Error generating PDF report:', error)
+      alert('Error generating client report. Please check the console for details.')
     }
   }
 
@@ -308,7 +330,7 @@ const ClientInsightsModal = ({ client, onClose, formatCurrency, calculateAccount
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={250}>
-                  <RechartsPieChart id="client-portfolio-allocation-chart">
+                  <RechartsPieChart>
                     <Pie
                       data={portfolioData}
                       cx="50%"
@@ -327,6 +349,28 @@ const ClientInsightsModal = ({ client, onClose, formatCurrency, calculateAccount
                   </RechartsPieChart>
                 </ResponsiveContainer>
               </CardContent>
+              {/* Hidden chart for PDF generation */}
+              <div id="client-portfolio-chart" style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '600px', height: '400px' }}>
+                <ResponsiveContainer width={600} height={400}>
+                  <RechartsPieChart>
+                    <Pie
+                      data={portfolioData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                      outerRadius={120}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {portfolioData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => formatCurrency(value)} />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              </div>
             </Card>
 
             {/* Risk Assessment */}
